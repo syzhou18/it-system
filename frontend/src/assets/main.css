@@ -1,0 +1,89 @@
+/* --- 1. 全域與基本設定 --- */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: #f4f7f6; /* 為內容區設定一個淺灰色背景 */
+}
+
+/* --- 2. 頁首 Header --- */
+.app-header {
+  display: flex;         /* 使用 Flexbox 對齊內部元素 */
+  align-items: center;   /* 垂直置中 */
+  position: fixed;       /* 固定在視窗頂部 */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 60px;
+  padding: 0 20px;       /* 左右內間距 */
+  background-color: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  z-index: 100;          /* 確保 Header 在最上層 */
+  box-sizing: border-box;/* 確保 padding 不會增加寬度 */
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px; /* 圖示和標題之間的間距 */
+}
+
+.logo h1 {
+  margin: 0;
+  font-size: 20px;
+  color: #333;
+}
+
+/* --- 3. 側邊欄 Sidebar --- */
+.sidebar {
+  position: fixed;        /* 固定在視窗左側 */
+  top: 60px;              /* 從 Header下方開始 */
+  left: 0;
+  width: 220px;           /* 側邊欄寬度 */
+  height: calc(100vh - 60px); /* 高度填滿剩餘視窗 */
+  background-color: #f8f9fa;
+  border-right: 1px solid #e0e0e0;
+  padding: 20px 0;
+  z-index: 50;
+  box-sizing: border-box;
+}
+
+/* --- 4. 主要內容區 Main Content --- */
+.main-content {
+  /* 關鍵：透過 margin-left 和 padding-top 將內容推到可見區域 */
+  margin-left: 220px;     /* 空出左側 Sidebar 的寬度 */
+  padding: 20px;
+  padding-top: 80px;      /* Header 高度 60px + 額外 20px 間距 */
+  box-sizing: border-box;
+}
+
+/* --- 5. 側邊欄導航樣式 --- */
+.sidebar-nav {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sidebar-nav li a {
+  display: block;
+  padding: 12px 25px;
+  text-decoration: none;
+  color: #333;
+  font-weight: 500;
+  border-left: 3px solid transparent; /* 用於 Active 狀態的提示條 */
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.sidebar-nav li a:hover {
+  background-color: #e9ecef;
+}
+
+/* 當前路由的 Active 狀態 */
+.sidebar-nav li a.router-link-exact-active {
+  background-color: #e9ecef;
+  color: #007bff;
+  border-left-color: #007bff;
+}
+
+
+
