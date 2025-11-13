@@ -49,7 +49,7 @@ services:
     container_name: frontend
     restart: always
     ports:
-      - "80:80"               # 開放 80 埠供用戶存取
+      - "8090:80"               # 開放 80 埠供用戶存取
     depends_on:
       - backend               # 確保後端先啟動 (如果前端需要後端 API 才能啟動)
 

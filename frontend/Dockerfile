@@ -2,9 +2,10 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
-RUN apk add --no-cache python3 make gcc g++
+#RUN apk add --no-cache python3 make gcc g++
 RUN npm install
 COPY . .
+#RUN node ./node_modules/vite/bin/vite.js build
 RUN npm run build  # 執行建置指令，通常會產生 dist 或 build 資料夾
 
 # 階段 2: 運行 (Serve) 靜態檔案
