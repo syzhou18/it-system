@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # 1. 資料庫服務 (MySQL)
+  db:
+    image: mysql:latest
+    container_name: db
+    #command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 1qazZSE$
+      MYSQL_DATABASE: company_assets
+      #MYSQL_USER: root
+      #MYSQL_PASSWORD: 1qazZSE$
+    ports:
+      - "3306:3306" # 只有需要從主機存取資料庫時才需要開放
+    volumes:
+      - dbdata:/var/lib/mysql # 確保資料持久化
+      - ./mysql_init:/docker-entrypoint-initdb.d # 初始化 SQL 腳本
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p", "1qazZSE$"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 2. 後端 API 服務 (Node.js)
+  backend:
+    build:
+      context: ./backend      # Dockerfile 在 backend 資料夾內
+      dockerfile: Dockerfile
+    container_name: backend
+    restart: always
+    environment:
+      NODE_ENV: production
+      DATABASE_HOST: db       # ⭐️ 這裡使用服務名稱 'db' 作為資料庫連線位址
+      DATABASE_USER: root
+      DATABASE_PASSWORD: 1qazZSE$
+      DATABASE_NAME: company_assets
+    ports:
+      - "3000:3000"           # 開放 3000 埠供前端或測試使用
+    depends_on:
+      - db # 僅當 db 服務通過健康檢查後，backend 才會啟動
+
+  # 3. 前端網頁服務 (Nginx 服務靜態檔案)
+  frontend:
+    build:
+      context: ./frontend     # Dockerfile 在 frontend 資料夾內
+      dockerfile: Dockerfile
+    container_name: frontend
+    restart: always
+    ports:
+      - "80:80"               # 開放 80 埠供用戶存取
+    depends_on:
+      - backend               # 確保後端先啟動 (如果前端需要後端 API 才能啟動)
+
+volumes:
+  dbdata:                     # 定義用於資料庫持久化的 Volume
