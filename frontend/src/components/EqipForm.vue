@@ -1,10 +1,13 @@
 <script setup>
+// --- 套件匯入 ---
 import { ref } from 'vue'; 
 import axios from 'axios';
 
-// 使用 'defineEmits' 來定義這個元件可以發出的事件
+// --- 事件定義 ---
+// 定義可發出的事件，用於通知父元件
 const emit = defineEmits(['eqip-submitted']);
 
+// --- 表單資料狀態 ---
 const formData = ref({
   company_id: '',
   hostname: '',
@@ -21,17 +24,18 @@ const formData = ref({
   Remarks: '' 
 });
 
-// 表單提交方法
+// --- 表單提交處理 ---
 async function submitForm() {
   try {
-    const response = await axios.post('http://localhost:3000/api/equipment', formData.value);
+    // 發送 POST 請求至後端 API
+    const response = await axios.post('http://192.168.2.168:3000/api/equipment', formData.value);
     console.log('資料提交成功:', response.data);
     alert('資料已成功更新！');
 
-    // 提交成功後，發出一個事件，通知父元件資料已更新
+    // 提交成功後，觸發事件通知父元件刷新資料
     emit('eqip-submitted');
 
-    // 清空表單
+    // 重置表單欄位
     formData.value.company_id = '';
     formData.value.hostname = '';
     formData.value.serial_number = '';
@@ -56,6 +60,7 @@ async function submitForm() {
   <div>
     <h2>新增設備</h2>
     <form @submit.prevent="submitForm">
+      
       <div class="form-group">
         <label for="company_id">公司代號:</label>
         <select id="company_id" v-model="formData.company_id">
@@ -64,6 +69,7 @@ async function submitForm() {
           <option value="3">倍思特-事業體</option>
         </select>
       </div>
+
       <div class="form-group">
         <label for="hostname">設備名稱:</label>
         <input type="text" id="hostname" v-model="formData.hostname" required>
@@ -80,6 +86,7 @@ async function submitForm() {
         <label for="mac_address">MAC位址:</label>
         <input type="text" id="mac_address" v-model="formData.mac_address" required>
       </div>
+
       <div class="form-group">
         <label for="type">類型:</label>
         <select id="type" v-model="formData.type">
@@ -110,6 +117,7 @@ async function submitForm() {
           <option value="Other">Other</option>
         </select> 
       </div>
+
       <div class="form-group">
         <label for="purchase_date">購買日期:</label>
         <input type="date" id="purchase_date" v-model="formData.purchase_date" required>
@@ -132,11 +140,11 @@ async function submitForm() {
         <input type="text" id="Remarks" v-model="formData.Remarks">
       </div>
       
-      <!-- 套用全域按鈕樣式 -->
       <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 15px;">提交</button>
     </form>
   </div>
 </template>
 
 <style>
+/* 樣式由父元件或全域 CSS 管理 */
 </style>

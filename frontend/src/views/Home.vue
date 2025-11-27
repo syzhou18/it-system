@@ -1,52 +1,49 @@
 <script setup>
-// --- 核心套件匯入 ---
+// --- 套件匯入 ---
 import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
 
-// --- 響應式狀態定義 ---
-const equipments = ref([]); // 儲存所有設備資料
-const users = ref([]); // 儲存所有使用者資料
-const loading = ref(true); // 載入狀態
-const error = ref(null); // 錯誤訊息
+// --- 狀態定義 ---
+const equipments = ref([]); // 設備列表
+const users = ref([]);      // 使用者列表
+const loading = ref(true);  // 載入中狀態
+const error = ref(null);    // 錯誤訊息
 
 // --- API 呼叫 ---
-// 使用 Promise.all 並行獲取設備和使用者資料，以提高載入速度
 async function fetchData() {
   try {
     loading.value = true;
+    // 並行請求設備和使用者資料
     const [equipmentsResponse, usersResponse] = await Promise.all([
-      axios.get('http://localhost:3000/api/equipment'),
-      axios.get('http://localhost:3000/api/users')
+      axios.get('http://192.168.2.168:3000/api/equipment'),
+      axios.get('http://192.168.2.168:3000/api/users')
     ]);
     equipments.value = equipmentsResponse.data;
     users.value = usersResponse.data;
   } catch (err) {
-    console.error('獲取儀表板資料時發生錯誤:', err);
-    error.value = '無法載入資料，請稍後再試。';
+    console.error('API 請求失敗:', err);
+    error.value = '資料載入失敗，請稍後重試。';
   } finally {
     loading.value = false;
   }
 }
 
-// --- 計算屬性 (用於儀表板數據統計) ---
+// --- 計算屬性 (儀表板統計) ---
 
-// 計算總設備數量
+// 總計數據
 const totalEquipments = computed(() => equipments.value.length);
-
-// 計算總員工人數
 const totalUsers = computed(() => users.value.length);
 
-// 計算狀態為 "Available" (閒置) 的設備數量
-const availableEquipments = computed(() => {
-  return equipments.value.filter(e => e.status === 'Available').length;
-});
+// 設備狀態統計
+const availableEquipments = computed(() => 
+  equipments.value.filter(e => e.status === 'Available').length
+);
 
-// 計算狀態為 "Under Repair" (維修中) 的設備數量
-const repairingEquipments = computed(() => {
-  return equipments.value.filter(e => e.status === 'Under Repair').length;
-});
+const repairingEquipments = computed(() => 
+  equipments.value.filter(e => e.status === 'Under Repair').length
+);
 
-// 統計各種設備狀態的數量
+// 各狀態詳細數量統計 (圖表用)
 const statusCounts = computed(() => {
   const counts = { '使用中': 0, '閒置': 0, '維修中': 0, '除役': 0 };
   const statusMap = {
@@ -55,6 +52,7 @@ const statusCounts = computed(() => {
     'Under Repair': '維修中',
     'Decommissioned': '除役'
   };
+  
   equipments.value.forEach(e => {
     const statusName = statusMap[e.status] || e.status;
     if (counts[statusName] !== undefined) {
@@ -64,7 +62,7 @@ const statusCounts = computed(() => {
   return counts;
 });
 
-// 統計各種設備類型的數量
+// 設備類型統計 (圖表用)
 const typeCounts = computed(() => {
   const counts = {};
   equipments.value.forEach(e => {
@@ -73,15 +71,14 @@ const typeCounts = computed(() => {
   return counts;
 });
 
-// 獲取最近新增的 5 筆設備 (假設 ID 越大越新)
+// 最近新增的 5 筆設備 (以 ID 排序)
 const recentEquipments = computed(() => {
   return [...equipments.value]
     .sort((a, b) => b.computer_id - a.computer_id)
     .slice(0, 5);
 });
 
-
-// --- 生命週期掛鉤 ---
+// --- 生命週期 ---
 onMounted(() => {
   fetchData();
 });
@@ -95,7 +92,6 @@ onMounted(() => {
     <div v-else-if="error" class="message-card error-message">{{ error }}</div>
 
     <div v-else>
-      <!-- 關鍵指標 (KPIs) 區塊 -->
       <div class="kpi-grid">
         <div class="kpi-card">
           <div class="value">{{ totalEquipments }}</div>
@@ -115,9 +111,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- 圖表與列表區塊 -->
       <div class="dashboard-grid">
-        <!-- 設備狀態分佈圖表 -->
         <div class="dashboard-card">
           <h2>設備狀態分佈</h2>
           <div class="bar-chart">
@@ -131,7 +125,6 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- 設備類型分佈圖表 -->
         <div class="dashboard-card">
           <h2>設備類型分佈</h2>
           <div class="bar-chart">
@@ -146,8 +139,7 @@ onMounted(() => {
         </div>
       </div>
 
-       <!-- 最近新增設備列表 -->
-      <div class="dashboard-card">
+       <div class="dashboard-card">
           <h2>最近新增設備</h2>
           <table class="data-table simple-table">
             <thead>
@@ -173,12 +165,13 @@ onMounted(() => {
 </template>
 
 <style scoped>
+/* 頁面標題 */
 .dashboard-container h1 {
   text-align: center;
   margin-bottom: 40px;
 }
 
-/* KPI 卡片網格 */
+/* KPI 卡片樣式 */
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -207,7 +200,7 @@ onMounted(() => {
   margin-top: 5px;
 }
 
-/* 主要儀表板網格 */
+/* 儀表板主要佈局 */
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
@@ -260,7 +253,7 @@ onMounted(() => {
 
 .bar {
   height: 100%;
-  background-color: #6c757d; /* 淺灰色長條 */
+  background-color: #6c757d;
   border-radius: 4px;
   transition: width 0.5s ease-in-out;
 }
@@ -271,7 +264,7 @@ onMounted(() => {
   text-align: left;
 }
 
-/* 簡化版的表格樣式，用於最近新增列表 */
+/* 簡易表格樣式 (用於最近新增列表) */
 .simple-table {
   box-shadow: none;
   border: none;

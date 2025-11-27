@@ -1,68 +1,120 @@
 <script setup>
-// --- 核心與外部套件匯入 ---
-import { ref, onMounted, computed } from 'vue';
+// --- 套件與 Composable 匯入 ---
 import axios from 'axios';
-
-// --- 自訂元件與 Composables 匯入 ---
+import { ref, onMounted } from 'vue';
 import SoftwareForm from '../components/SoftwareForm.vue';
 import { useAuth } from '../composables/useAuth.js';
 import { useClickOutside } from '../composables/useClickOutside.js';
 import { useSortableTable } from '../composables/useSortableTable.js';
 
-// --- 權限、排序、外部點擊功能實例化 ---
-const { userRole } = useAuth();
+// --- 狀態定義 ---
+const softwares = ref([]);
+const equipments = ref([]);
+const loading = ref(true);
+const error = ref(null);
+
+// Modal 與 UI 狀態
+const isAssignModalVisible = ref(false);
+const isNewSoftwareModalVisible = ref(false);
+const activeDropdownId = ref(null);
+const isDropdownUpward = ref(false);
 const tableRef = ref(null);
+
+// 編輯與表單狀態
+const editingSoftwareId = ref(null);
+const tempSoftwareData = ref(null);
+const assignFormData = ref({
+  software_id: '',
+  asset_number: ''
+});
+
+// --- Composable 初始化 ---
+const { userRole } = useAuth();
+
+// 初始化排序功能
+const { sortKey, sortOrder, sortedData: sortedSoftwares, sortBy } = useSortableTable(softwares);
+
+// 初始化點擊外部關閉功能
 const cancelAllActions = () => {
   editingSoftwareId.value = null;
   activeDropdownId.value = null;
 };
 useClickOutside(tableRef, cancelAllActions);
 
-// --- 響應式狀態定義 ---
-const softwares = ref([]);
-const equipments = ref([]);
-const loading = ref(true);
-const error = ref(null);
-const isAssignModalVisible = ref(false);
-const isNewSoftwareModalVisible = ref(false);
-const activeDropdownId = ref(null);
-const isDropdownUpward = ref(false);
-const editingSoftwareId = ref(null);
-const tempSoftwareData = ref(null);
+// --- API 函式 ---
 
-// 將 softwares ref 傳入排序 composable
-const { sortKey, sortOrder, sortedData: sortedSoftwares, sortBy } = useSortableTable(softwares);
-
-// 指派軟體的表單數據
-const assignFormData = ref({
-  software_id: '',
-  asset_number: '' // 修正：應為 asset_number
-});
-
-// --- API 相關函式 ---
+// 獲取初始資料 (軟體與設備)
 async function fetchData() {
   try {
     loading.value = true;
     const [softwaresRes, equipmentsRes] = await Promise.all([
-      axios.get('http://localhost:3000/api/softwares'),
-      axios.get('http://localhost:3000/api/equipment')
+      axios.get('http://192.168.2.168:3000/api/softwares'),
+      axios.get('http://192.168.2.168:3000/api/equipment')
     ]);
     softwares.value = softwaresRes.data;
     equipments.value = equipmentsRes.data;
   } catch (err) {
     console.error('獲取資料失敗:', err);
-    error.value = '無法載入資料';
+    error.value = '無法載入資料，請檢查網路連線。';
   } finally {
     loading.value = false;
   }
 }
 
-// --- 事件處理函式 ---
+// 儲存軟體編輯
+async function saveEdit() {
+  if (!tempSoftwareData.value) return;
+  try {
+    await axios.put(`http://192.168.2.168:3000/api/softwares/${editingSoftwareId.value}`, tempSoftwareData.value);
+    alert('軟體更新成功！');
+    
+    // 重置狀態並刷新
+    editingSoftwareId.value = null;
+    await fetchData();
+  } catch (err) {
+    console.error('更新失敗:', err);
+    alert('更新失敗，請檢查後端服務。');
+  }
+}
+
+// 刪除軟體
+async function deleteSoftware(id) {
+  if (!confirm(`您確定要刪除軟體編號 ${id} 的資料嗎？`)) return;
+  try {
+    await axios.delete(`http://192.168.2.168:3000/api/softwares/${id}`);
+    alert('軟體刪除成功！');
+    await fetchData();
+  } catch (err) {
+    console.error('刪除失敗:', err);
+    alert('刪除失敗，請檢查後端服務。');
+  }
+}
+
+// 提交軟體指派
+async function submitAssignmentForm() {
+  try {
+    await axios.post('http://192.168.2.168:3000/api/assigned/software', assignFormData.value);
+    alert('軟體指派成功！');
+    
+    // 重置表單並刷新
+    isAssignModalVisible.value = false;
+    assignFormData.value = { software_id: '', asset_number: '' };
+    await fetchData();
+  } catch (error) {
+    console.error('指派失敗:', error);
+    const msg = error.response?.data?.message || '指派失敗，請檢查後端服務。';
+    alert(msg);
+  }
+}
+
+// --- 介面操作函式 ---
+
 function toggleDropdown(id, event) {
   if (activeDropdownId.value === id) {
     activeDropdownId.value = null;
   } else {
     activeDropdownId.value = id;
+    // 計算視窗空間決定選單向上或向下
     const buttonRect = event.currentTarget.getBoundingClientRect();
     const spaceBelow = window.innerHeight - buttonRect.bottom;
     isDropdownUpward.value = spaceBelow < 100;
@@ -73,33 +125,10 @@ function startEdit(software) {
   activeDropdownId.value = null;
   editingSoftwareId.value = software.software_id;
   tempSoftwareData.value = { ...software };
+  
+  // 格式化日期以適配 input[type="date"]
   if (tempSoftwareData.value.purchase_date) {
     tempSoftwareData.value.purchase_date = tempSoftwareData.value.purchase_date.substring(0, 10);
-  }
-}
-
-async function saveEdit() {
-  if (!tempSoftwareData.value) return;
-  try {
-    await axios.put(`http://localhost:3000/api/softwares/${editingSoftwareId.value}`, tempSoftwareData.value);
-    alert('軟體更新成功！');
-    editingSoftwareId.value = null;
-    await fetchData();
-  } catch (err) {
-    console.error('更新失敗:', err);
-    alert('更新失敗');
-  }
-}
-
-async function deleteSoftware(id) {
-  if (!confirm(`您確定要刪除軟體編號 ${id} 的資料嗎？`)) return;
-  try {
-    await axios.delete(`http://localhost:3000/api/softwares/${id}`);
-    alert('軟體刪除成功！');
-    await fetchData();
-  } catch (err) {
-    console.error('刪除失敗:', err);
-    alert('刪除失敗');
   }
 }
 
@@ -114,20 +143,7 @@ async function handleSoftwareSubmitted() {
   await fetchData();
 }
 
-async function submitAssignmentForm() {
-  try {
-    await axios.post('http://localhost:3000/api/assigned/software', assignFormData.value);
-    alert('軟體指派成功！');
-    isAssignModalVisible.value = false;
-    assignFormData.value = { software_id: '', asset_number: '' }; // 重設表單
-    await fetchData(); // 重新獲取資料以更新狀態
-  } catch (error) {
-    console.error('指派失敗:', error);
-    alert(error.response?.data?.message || '指派失敗，請檢查後端服務。');
-  }
-}
-
-// --- 生命週期掛鉤 ---
+// --- 生命週期 ---
 onMounted(fetchData);
 </script>
 
@@ -136,12 +152,10 @@ onMounted(fetchData);
     <h1>軟體管理</h1>
 
     <div class="page-actions">
-      <!-- 新增按鈕 -->
       <button @click="isNewSoftwareModalVisible = true" class="btn btn-success">新增軟體</button>
       <button @click="isAssignModalVisible = true" class="btn">指派軟體至設備</button>
     </div>
 
-    <!-- 新增軟體 Modal -->
     <div v-if="isNewSoftwareModalVisible" class="modal-overlay">
       <div class="modal-content">
         <button @click="isNewSoftwareModalVisible = false" class="modal-close-button">×</button>
@@ -149,7 +163,6 @@ onMounted(fetchData);
       </div>
     </div>
     
-    <!-- 指派軟體 Modal -->
     <div v-if="isAssignModalVisible" class="modal-overlay">
         <div class="modal-content">
             <button @click="isAssignModalVisible = false" class="modal-close-button">×</button>
@@ -178,13 +191,10 @@ onMounted(fetchData);
         </div>
     </div>
 
-
-    <!-- 訊息提示 -->
     <div v-if="loading" class="message-card">正在載入資料...</div>
     <div v-else-if="error" class="message-card error-message">{{ error }}</div>
     <div v-else-if="sortedSoftwares.length === 0" class="message-card">沒有找到任何軟體資料。</div>
     
-    <!-- 資料表格 -->
     <table v-else class="data-table" ref="tableRef">
       <thead>
         <tr>
@@ -195,12 +205,12 @@ onMounted(fetchData);
           <th @click="sortBy('version')">版本 <span v-if="sortKey === 'version'">{{ sortOrder === 'asc' ? '▲' : '▼' }}</span></th>
           <th @click="sortBy('purchase_date')">購買日期 <span v-if="sortKey === 'purchase_date'">{{ sortOrder === 'asc' ? '▲' : '▼' }}</span></th>
           <th @click="sortBy('status')">狀態 <span v-if="sortKey === 'status'">{{ sortOrder === 'asc' ? '▲' : '▼' }}</span></th>
-          <th >操作</th>
+          <th>操作</th>
         </tr>
       </thead>
       <tbody>
         <template v-for="software in sortedSoftwares" :key="software.software_id">
-          <!-- 顯示模式 -->
+          
           <tr v-if="editingSoftwareId !== software.software_id">
             <td>{{ software.software_id }}</td>
             <td>{{ software.software_name }}</td>
@@ -209,7 +219,7 @@ onMounted(fetchData);
             <td>{{ software.version }}</td>
             <td>{{ software.purchase_date ? software.purchase_date.substring(0, 10) : '' }}</td>
             <td>{{ software.status }}</td>
-            <td >
+            <td>
               <div class="dropdown">
                 <button @click="toggleDropdown(software.software_id, $event)" class="dropdown-toggle">...</button>
                 <div v-if="activeDropdownId === software.software_id" class="dropdown-menu" :class="{ 'upward': isDropdownUpward }">
@@ -219,7 +229,7 @@ onMounted(fetchData);
               </div>
             </td>
           </tr>
-          <!-- 編輯模式 -->
+
           <tr v-else>
             <td>{{ tempSoftwareData.software_id }}</td>
             <td><input type="text" v-model="tempSoftwareData.software_name"></td>
@@ -247,12 +257,5 @@ onMounted(fetchData);
 </template>
 
 <style scoped>
-/* 將 form-card 相關樣式移至全域或保持在此處（如果僅此頁面使用） */
-.form-card {
-  background: #fff;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  margin-bottom: 20px;
-}
+/* 樣式由全域 CSS 管理 */
 </style>
